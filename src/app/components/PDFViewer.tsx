@@ -57,6 +57,11 @@ interface PageAnnotations {
   imageAnnotations: ImageAnnotation[];
 }
 
+interface Position {
+  x: number,
+  y: number
+}
+
 // Add TypeScript interface for DOMMatrix
 declare global {
   interface Window {
@@ -71,6 +76,7 @@ export default function PDFViewer({ url }: {url: string}) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const currentSelectedAnnotationPosition = useRef<Position>({x: 0, y: 0})
   const [pdfDoc, setPdfDoc] = useState<PDFDocumentProxy | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [numPages, setNumPages] = useState(0);
@@ -339,6 +345,19 @@ export default function PDFViewer({ url }: {url: string}) {
       }
     };
   }, [pdfDoc, currentPage]);
+  
+  useEffect(() => {
+    if(!selectedAnnotationId) return
+    
+    const annotations = getCurrentPageAnnotations();
+    Object.entries(annotations).forEach(([key, value]) => {
+       value.forEach((item: TextAnnotation | ImageAnnotation) => {
+        if(item.id == selectedAnnotationId) {
+          currentSelectedAnnotationPosition.current = {x: Math.floor(item.x), y: Math.floor(item.y)}
+        }
+      });
+    })
+  }, [selectedAnnotationId, getCurrentPageAnnotations])
 
   // Page navigation
   const goToPrevPage = () => {
@@ -438,6 +457,40 @@ export default function PDFViewer({ url }: {url: string}) {
       }
     }
   };
+  
+  const handleMouseDrag = (e: KonvaEventObject<MouseEvent> | null) => {
+    if (e) {
+      const node = e.target;
+      const id = node.id();
+      const pos = node.position();
+      const newPosition = { x: Math.floor(pos.x), y: Math.floor(pos.y) };
+
+      const currAnnotations = getCurrentPageAnnotations();
+      const textAnnotation = currAnnotations.textAnnotations.find(item => item.id === id);
+      const imageAnnotation = currAnnotations.imageAnnotations.find(item => item.id === id);
+      if (textAnnotation) {
+        updateCurrentPageAnnotations({
+          ...currAnnotations,
+          textAnnotations: currAnnotations.textAnnotations.map(annotation => 
+            annotation.id === id 
+              ? { ...annotation, x: newPosition.x, y: newPosition.y }
+              : annotation
+          )
+        });
+      }
+
+      if (imageAnnotation) {
+        updateCurrentPageAnnotations({
+          ...currAnnotations,
+          imageAnnotations: currAnnotations.imageAnnotations.map(annotation => 
+            annotation.id === id 
+              ? { ...annotation, x: newPosition.x, y: newPosition.y }
+              : annotation
+          )
+        });
+      }
+    }
+  }
 
   const handleMouseUp = () => {
     setIsDrawing(false);
@@ -560,7 +613,7 @@ export default function PDFViewer({ url }: {url: string}) {
     setImageFile('');
   };
 
-  const deleteSelectedAnnotation = () => {
+  const deleteSelectedAnnotation = () =>{
     if (selectedAnnotationId) {
       const currAnnotations = getCurrentPageAnnotations();
       
@@ -752,14 +805,14 @@ export default function PDFViewer({ url }: {url: string}) {
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-1"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
             {isSaving ? 'Saving...' : 'Save'}
           </Button>
-        </div>?
+        </div>
       </div>
       
       {/* Hidden file input for image upload */}
       
       {/* PDF Content */}
       <div className="pdf-content flex-1 relative bg-gray-200 overflow-auto flex justify-center items-center">
-        <div className="pdf-page bg-white shadow-md my-4 flex flex-col items-center justify-center" ref={containerRef}>
+        <div className="relative pdf-page bg-white shadow-md my-4 flex flex-col items-center justify-center" ref={containerRef}>
           {/* Page number indicator */}
           <div className="page-number absolute top-2 left-1/2 transform -translate-x-1/2 text-gray-500 font-semibold text-sm">
             #{currentPage}
@@ -790,6 +843,7 @@ export default function PDFViewer({ url }: {url: string}) {
                   onMouseMove={handleMouseMove}
                   onMouseUp={handleMouseUp}
                   onTextChange={handleTextChange}
+                  onDragMove={handleMouseDrag}
                   onTextEditingComplete={handleTextEditingComplete}
                   onTextClick={handleTextClick}
                   onImageClick={handleImageClick}
@@ -797,6 +851,30 @@ export default function PDFViewer({ url }: {url: string}) {
               )}
             </div>
           </div>
+          {
+        selectedAnnotationId?
+          <div className="absolute" style={{ top: currentSelectedAnnotationPosition.current.y + "px", left: currentSelectedAnnotationPosition.current.x + "px"}}>
+            <Button onClick={deleteSelectedAnnotation}>
+            <svg
+              role="img"
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              width="24px"
+              height="24px"
+            >
+              <path
+                fill="none"
+                stroke="#000000"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth="2"
+                d="M3 6h18m-2 0v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6m3 0V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"
+              />
+            </svg>
+            </Button>
+          </div>:
+        ""
+      }
         </div>
       </div>
       
@@ -818,6 +896,8 @@ export default function PDFViewer({ url }: {url: string}) {
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="18"><path fill="none" d="M0 0h24v24H0z"/><path d="M13.172 12l-4.95-4.95 1.414-1.414L16 12l-6.364 6.364-1.414-1.414z"/></svg>
         </button>
       </div>
+
+      
     </div>
   );
 };
