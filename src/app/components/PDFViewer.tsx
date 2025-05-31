@@ -76,7 +76,6 @@ export default function PDFViewer({ url }: {url: string}) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
-  const currentSelectedAnnotationPosition = useRef<Position>({x: 0, y: 0})
   const [pdfDoc, setPdfDoc] = useState<PDFDocumentProxy | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [numPages, setNumPages] = useState(0);
@@ -89,6 +88,8 @@ export default function PDFViewer({ url }: {url: string}) {
   const [isSaving, setIsSaving] = useState(false);
   const [imageFile, setImageFile] = useState<string | null>(null)
   const [isFileUploading, setIsFileUploading] = useState<boolean>(false)
+  const annotationToolPosition = useRef<Position>({x: 0, y: 0})
+  const showAnnotationTool = useRef<boolean>(false);
 
   // Helper function to get or initialize current page annotations
   const getCurrentPageAnnotations = (): PageAnnotations => {
@@ -345,18 +346,22 @@ export default function PDFViewer({ url }: {url: string}) {
       }
     };
   }, [pdfDoc, currentPage]);
-  
+
   useEffect(() => {
-    if(!selectedAnnotationId) return
+    if(!selectedAnnotationId) return;
     
-    const annotations = getCurrentPageAnnotations();
-    Object.entries(annotations).forEach(([key, value]) => {
-       value.forEach((item: TextAnnotation | ImageAnnotation) => {
-        if(item.id == selectedAnnotationId) {
-          currentSelectedAnnotationPosition.current = {x: Math.floor(item.x), y: Math.floor(item.y)}
-        }
-      });
-    })
+    const text = getCurrentPageAnnotations().textAnnotations.find(annotation => annotation.id === selectedAnnotationId);
+    const image = getCurrentPageAnnotations().imageAnnotations.find(annotation => annotation.id === selectedAnnotationId);
+
+    if (text) {
+      annotationToolPosition.current = {x: text.x, y: text.y}     
+    }
+
+    if (image) {
+      annotationToolPosition.current = {x: image.x, y: image.y}
+    }
+
+
   }, [selectedAnnotationId, getCurrentPageAnnotations])
 
   // Page navigation
@@ -374,6 +379,7 @@ export default function PDFViewer({ url }: {url: string}) {
   
   // Drawing handlers
   const handleMouseDown = (e: KonvaEventObject<MouseEvent>) => {
+      showAnnotationTool.current = false
       // If we click on an annotation, the click handler in KonvaComponents will handle it
       // If we click on empty space, we want to deselect any selected annotation
       const clickedTarget = e.target;
@@ -391,6 +397,7 @@ export default function PDFViewer({ url }: {url: string}) {
         );
         
         if (editingText) {
+          setSelectedAnnotationId(editingText.id)
           updateCurrentPageAnnotations({
             ...currAnnotations,
             textAnnotations: currAnnotations.textAnnotations.map(annotation => 
@@ -462,8 +469,12 @@ export default function PDFViewer({ url }: {url: string}) {
     if (e) {
       const node = e.target;
       const id = node.id();
-      const pos = node.position();
-      const newPosition = { x: Math.floor(pos.x), y: Math.floor(pos.y) };
+      const newPosition = {
+        x: Number(node.x()),
+        y: Number(node.y())
+      };
+      
+      showAnnotationTool.current = false;
 
       const currAnnotations = getCurrentPageAnnotations();
       const textAnnotation = currAnnotations.textAnnotations.find(item => item.id === id);
@@ -494,6 +505,8 @@ export default function PDFViewer({ url }: {url: string}) {
 
   const handleMouseUp = () => {
     setIsDrawing(false);
+    if(selectedAnnotationId) showAnnotationTool.current = true
+    console.log(showAnnotationTool.current)
   };
 
   // Text annotation handlers
@@ -852,9 +865,9 @@ export default function PDFViewer({ url }: {url: string}) {
             </div>
           </div>
           {
-        selectedAnnotationId?
-          <div className="absolute" style={{ top: currentSelectedAnnotationPosition.current.y + "px", left: currentSelectedAnnotationPosition.current.x + "px"}}>
-            <Button onClick={deleteSelectedAnnotation}>
+        selectedAnnotationId && showAnnotationTool.current?
+          <div className="absolute bd-transparent rounded-full outline-ck outline-1 " style={{top: annotationToolPosition.current.y + 50, left: annotationToolPosition.current.x + 30}}>
+            <Button className="bg-transparent" onClick={deleteSelectedAnnotation}>
             <svg
               role="img"
               xmlns="http://www.w3.org/2000/svg"
