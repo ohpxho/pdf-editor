@@ -3,7 +3,6 @@
 import { useRef, useEffect, useState } from 'react';
 import { Stage, Layer, Line, Text, Transformer, Image } from 'react-konva';
 import Konva from 'konva';
-import { Sedgwick_Ave_Display } from 'next/font/google';
 
 interface TextAnnotation {
   id: string;
@@ -32,6 +31,7 @@ interface KonvaComponentsProps {
   drawingMode: 'draw' | 'select' | 'text' | 'image';
   onMouseDown: (e: Konva.KonvaEventObject<MouseEvent>) => void;
   onMouseMove: (e: Konva.KonvaEventObject<MouseEvent>) => void;
+  onDragMove: (e: Konva.KonvaEventObject<MouseEvent> | null) => void;
   onMouseUp: () => void;
   onTextChange: (id: string, text: string) => void;
   onTextEditingComplete: (id: string) => void;
@@ -49,6 +49,7 @@ const KonvaComponents = ({
   onMouseDown,
   onMouseMove,
   onMouseUp,
+  onDragMove,
   onTextChange,
   onTextEditingComplete,
   onTextClick,
@@ -100,7 +101,6 @@ const KonvaComponents = ({
       const selectedImageNode = imageRefs.current[selectedAnnotationId];
       
       if (selectedTextNode) {
-        console.log(selectedTextNode.getAttrs())
         transformerRef.current.nodes([selectedTextNode]);
       } else if (selectedImageNode) {
         transformerRef.current.nodes([selectedImageNode]);
@@ -113,7 +113,7 @@ const KonvaComponents = ({
       transformerRef.current.nodes([]);
       transformerRef.current.getLayer()?.batchDraw();
     }
-  }, [selectedAnnotationId, textAnnotations, imageAnnotations]);
+  }, [selectedAnnotationId, textAnnotations, imageAnnotations, imageObjects]);
 
   // Create and position textarea when text is selected for editing
   useEffect(() => {
@@ -129,7 +129,6 @@ const KonvaComponents = ({
       
       // Get position in page coordinates
       const textAttr = textNode.getAttrs();
-     console.log(textAttr) 
       // Calculate position relative to the viewport
       const areaAttr = {
         x: stageRect.left + (textAttr.x? textAttr.x: 0),
@@ -147,7 +146,6 @@ const KonvaComponents = ({
         setLocalTextValue(selectedAnnotation.text || '');
         setTextareaAttr(areaAttr);
       }
-      console.log(prevSelectedAnnotationId.current, 22)
       prevSelectedAnnotationId.current = selectedAnnotationId 
     } else {
       setTextareaAttr(null);
@@ -174,7 +172,6 @@ const KonvaComponents = ({
       const textarea = document.createElement('textarea');
       document.body.appendChild(textarea);
       textareaRef.current = textarea;
-      
       // Position textarea to match text node
       textarea.value = textNode.text();
       textarea.style.position = 'absolute';
@@ -292,7 +289,7 @@ const KonvaComponents = ({
     } else if (drawingMode === 'draw') {
       // Allow drawing when in draw mode
       onMouseDown(e);
-    }
+    } 
   };
 
   const handleDblClick = (e: Konva.KonvaEventObject<MouseEvent>) => {
@@ -325,6 +322,10 @@ const KonvaComponents = ({
             tension={0.5}
             lineCap="round"
             lineJoin="round"
+            onDragMove={(e) => {
+              e.cancelBubble = true;
+              onDragMove(null);
+            }}
           />
         ))}
         
@@ -333,6 +334,7 @@ const KonvaComponents = ({
           imageObjects[annotation.id] && (
             <Image
               key={annotation.id}
+              alt="Image Annotation"
               id={annotation.id}
               x={annotation.x}
               y={annotation.y}
@@ -343,6 +345,10 @@ const KonvaComponents = ({
               onClick={(e) => {
                 e.cancelBubble = true;
                 onImageClick(annotation.id);
+              }}
+              onDragMove={(e) => {
+                e.cancelBubble = true;
+                onDragMove(e);
               }}
               ref={(node) => {
                 if (node) {
@@ -369,6 +375,10 @@ const KonvaComponents = ({
               // Stop event propagation to prevent stage from receiving it
               e.cancelBubble = true;
               onTextClick(annotation.id);
+            }}
+            onDragMove={(e) => {
+              e.cancelBubble = true;
+              onDragMove(e);
             }}
             width={annotation.text ? undefined : 150}
             ref={(node) => {
