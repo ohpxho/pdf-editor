@@ -223,7 +223,6 @@ const KonvaComponents = ({
         try {
           // Make sure we update the parent component with the final text value
           if (localTextValue.trim() !== '') {
-            console.log('Saving text:', localTextValue);
             onTextChange(selectedAnnotationId, localTextValue);
           }
           
@@ -231,7 +230,6 @@ const KonvaComponents = ({
             document.body.removeChild(textareaRef.current);
           }
         } catch {
-          console.log('Textarea already removed');
         } finally {
           textareaRef.current = null;
           isRemovingTextarea.current = false;
@@ -372,8 +370,6 @@ const KonvaComponents = ({
             padding={10}
             draggable={true}
             onClick={(e) => {
-              // Stop event propagation to prevent stage from receiving it
-              e.cancelBubble = true;
               onTextClick(annotation.id);
             }}
             onDragMove={(e) => {

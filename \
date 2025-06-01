@@ -88,8 +88,8 @@ export default function PDFViewer({ url }: {url: string}) {
   const [isSaving, setIsSaving] = useState(false);
   const [imageFile, setImageFile] = useState<string | null>(null)
   const [isFileUploading, setIsFileUploading] = useState<boolean>(false)
-  const [annotationToolPosition, setAnnotationToolPosition] = useState<Position>({x: 0, y: 0})
-  const [showAnnotationTool, setShowAnnotationTool] = useState<boolean>(false);
+  const annotationToolPosition = useRef<Position>({x: 0, y: 0})
+  const showAnnotationTool = useRef<boolean>(false);
 
   // Helper function to get or initialize current page annotations
   const getCurrentPageAnnotations = (): PageAnnotations => {
@@ -350,21 +350,19 @@ export default function PDFViewer({ url }: {url: string}) {
   useEffect(() => {
     if(!selectedAnnotationId) return;
     
-    const currentAnnotations = pageAnnotations[currentPage];
-    if (!currentAnnotations) return;
-    
-    const text = currentAnnotations.textAnnotations.find(annotation => annotation.id === selectedAnnotationId);
-    const image = currentAnnotations.imageAnnotations.find(annotation => annotation.id === selectedAnnotationId);
-    
+    const text = getCurrentPageAnnotations().textAnnotations.find(annotation => annotation.id === selectedAnnotationId);
+    const image = getCurrentPageAnnotations().imageAnnotations.find(annotation => annotation.id === selectedAnnotationId);
+
     if (text) {
-      setAnnotationToolPosition({x: text.x, y: text.y})     
+      annotationToolPosition.current = {x: text.x, y: text.y}     
     }
 
     if (image) {
-      setAnnotationToolPosition({x: image.x, y: image.y})
+      annotationToolPosition.current = {x: image.x, y: image.y}
     }
 
-  }, [selectedAnnotationId, currentPage, pageAnnotations])
+
+  }, [selectedAnnotationId, getCurrentPageAnnotations])
 
   // Page navigation
   const goToPrevPage = () => {
@@ -381,7 +379,7 @@ export default function PDFViewer({ url }: {url: string}) {
   
   // Drawing handlers
   const handleMouseDown = (e: KonvaEventObject<MouseEvent>) => {
-      setShowAnnotationTool(false)
+      showAnnotationTool.current = false
       // If we click on an annotation, the click handler in KonvaComponents will handle it
       // If we click on empty space, we want to deselect any selected annotation
       const clickedTarget = e.target;
@@ -478,7 +476,6 @@ export default function PDFViewer({ url }: {url: string}) {
       
       setSelectedAnnotationId(id)
       
-      setShowAnnotationTool(false)
 
       const currAnnotations = getCurrentPageAnnotations();
       const textAnnotation = currAnnotations.textAnnotations.find(item => item.id === id);
@@ -510,7 +507,8 @@ export default function PDFViewer({ url }: {url: string}) {
   const handleMouseUp = () => {
     setIsDrawing(false);
     console.log(selectedAnnotationId)
-    if(selectedAnnotationId) setShowAnnotationTool(true)
+    if(selectedAnnotationId) showAnnotationTool.current = true
+    console.log(showAnnotationTool.current)
   };
 
   // Text annotation handlers
@@ -864,8 +862,8 @@ export default function PDFViewer({ url }: {url: string}) {
             </div>
           </div>
           {
-        selectedAnnotationId && showAnnotationTool?
-          <div className="absolute bd-transparent rounded-full outline-ck outline-1 " style={{top: annotationToolPosition.y + 50, left: annotationToolPosition.x + 30}}>
+        selectedAnnotationId && showAnnotationTool.current?
+          <div className="absolute bd-transparent rounded-full outline-ck outline-1 " style={{top: annotationToolPosition.current.y + 50, left: annotationToolPosition.current.x + 30}}>
             <Button className="bg-transparent" onClick={deleteSelectedAnnotation}>
             <svg
               role="img"
