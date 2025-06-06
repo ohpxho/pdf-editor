@@ -37,6 +37,9 @@ interface KonvaComponentsProps {
   onTextEditingComplete: (id: string) => void;
   onTextClick: (id: string) => void;
   onImageClick: (id: string) => void;
+  onTransformEnd: (e: Konva.KonvaEventObject<MouseEvent>) => void;
+  onTransform: (e: Konva.KonvaEventObject<MouseEvent>) => void;
+  onDblClick:  (id: string) => void
 }
 
 const KonvaComponents = ({
@@ -53,7 +56,10 @@ const KonvaComponents = ({
   onTextChange,
   onTextEditingComplete,
   onTextClick,
-  onImageClick
+  onImageClick,
+  onTransformEnd,
+  onTransform,
+  onDblClick
 }: KonvaComponentsProps) => {
   const textRefs = useRef<{ [key: string]: Konva.Text }>({});
   const imageRefs = useRef<{ [key: string]: Konva.Image }>({});
@@ -61,7 +67,6 @@ const KonvaComponents = ({
   const stageRef = useRef<Konva.Stage | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const isRemovingTextarea = useRef<boolean>(false);
-  const prevSelectedAnnotationId = useRef<string>('')
   // Local state to track textarea value to prevent focus loss on typing
   const [localTextValue, setLocalTextValue] = useState<string>('');
   const [textAreaAttr, setTextareaAttr] = useState<{
@@ -109,7 +114,6 @@ const KonvaComponents = ({
       }
       transformerRef.current.getLayer()?.batchDraw();
     } else if (transformerRef.current) {
-      prevSelectedAnnotationId.current = ''
       transformerRef.current.nodes([]);
       transformerRef.current.getLayer()?.batchDraw();
     }
@@ -129,10 +133,11 @@ const KonvaComponents = ({
       
       // Get position in page coordinates
       const textAttr = textNode.getAttrs();
+      
       // Calculate position relative to the viewport
       const areaAttr = {
-        x: stageRect.left + (textAttr.x? textAttr.x: 0),
-        y: stageRect.top + (textAttr.y? textAttr.y: 0),
+        x: Math.abs(stageRect.left) + (textAttr.x? textAttr.x: 0),
+        y: Math.abs(stageRect.top) + (textAttr.y? textAttr.y: 0),
         fontSize: (textAttr.fontSize? textAttr.fontSize: 0),
         rotation: (textAttr.rotation? textAttr.rotation: 0),
         scaleX: (textAttr.scaleX? textAttr.scaleX: 0),
@@ -141,12 +146,8 @@ const KonvaComponents = ({
         skewY: (textAttr.skewY? textAttr.skewY: 0)
       };
       
-      // Set local state for text value and position
-      if(selectedAnnotation?.text == "" || selectedAnnotationId == prevSelectedAnnotationId.current) {
-        setLocalTextValue(selectedAnnotation.text || '');
-        setTextareaAttr(areaAttr);
-      }
-      prevSelectedAnnotationId.current = selectedAnnotationId 
+      setTextareaAttr(areaAttr)
+      
     } else {
       setTextareaAttr(null);
     }
@@ -235,8 +236,8 @@ const KonvaComponents = ({
           isRemovingTextarea.current = false;
           setTextareaAttr(null);
         }
-        
-        onTextEditingComplete(selectedAnnotationId);
+        const textNodeSize = {width: textNode.width(), height: textNode.height()}
+        onTextEditingComplete(selectedAnnotationId, textNodeSize);
       };
       
       const handleTextareaBlur = () => {
@@ -296,6 +297,11 @@ const KonvaComponents = ({
       
       if (!dblClickedOnEmpty) {
       }
+      
+      if(drawingMode == "text") {
+        
+      }
+      
   }
 
   return (
@@ -348,6 +354,7 @@ const KonvaComponents = ({
                 e.cancelBubble = true;
                 onDragMove(e);
               }}
+              onTransformEnd={(e) => onTransformEnd(e)}
               ref={(node) => {
                 if (node) {
                   imageRefs.current[annotation.id] = node;
@@ -369,13 +376,16 @@ const KonvaComponents = ({
             background="none"
             padding={10}
             draggable={true}
-            onClick={(e) => {
+            onClick={() => {
               onTextClick(annotation.id);
             }}
             onDragMove={(e) => {
               e.cancelBubble = true;
               onDragMove(e);
             }}
+            onDblClick={() => onDblClick(annotation.id)}
+            onTransformEnd={(e) => onTransformEnd(e)}
+            onTransform={(e) => onTransform(e)}
             width={annotation.text ? undefined : 150}
             ref={(node) => {
               if (node) {
@@ -395,7 +405,7 @@ const KonvaComponents = ({
             }
             return newBox;
           }}
-          enabledAnchors={['middle-left', 'middle-right', 'top-left', 'top-right', 'bottom-left', 'bottom-right']}
+          enabledAnchors={['top-left', 'top-right', 'bottom-left', 'bottom-right']}
           rotateEnabled={true}
           keepRatio={true}
           centeredScaling={true}

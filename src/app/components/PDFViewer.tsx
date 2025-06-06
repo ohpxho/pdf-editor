@@ -20,6 +20,7 @@ import dynamic from 'next/dynamic'
 import { KonvaEventObject } from 'konva/lib/Node';
 import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
 import { XIcon } from "lucide-react"
+import Konva from 'konva'
 
 // Dynamically import Konva components with SSR disabled
 const KonvaComponents = dynamic(
@@ -35,6 +36,12 @@ interface TextAnnotation {
   id: string;
   x: number;
   y: number;
+  scaleX: number;
+  scaleY: number;
+  skewX: number;
+  height: number;
+  width: number;
+  skewY: number;
   text: string;
   draggable: boolean,
   isEditing: boolean;
@@ -45,6 +52,10 @@ interface ImageAnnotation {
   id: string;
   x: number;
   y: number;
+  scaleX: number;
+  scaleY: number;
+  skewX: number;
+  skewY: number;
   width: number;
   height: number;
   src: string;
@@ -182,7 +193,7 @@ export default function PDFViewer({ url }: {url: string}) {
             if (!textAnnotation.text.trim()) continue;
             
             const font = await pdfLibDoc.embedFont(StandardFonts.Helvetica);
-            const fontSize = 12;
+            const fontSize = 12 * textAnnotation.scaleX;
             
             // Convert position from canvas to PDF coordinates (PDF coordinates start from bottom-left)
             const x = textAnnotation.x * scaleX;
@@ -357,7 +368,11 @@ export default function PDFViewer({ url }: {url: string}) {
     const image = currentAnnotations.imageAnnotations.find(annotation => annotation.id === selectedAnnotationId);
     
     if (text) {
-      setAnnotationToolPosition({x: text.x, y: text.y})     
+      const scaleY = text.scaleY == 0? 1: text.scaleY
+      const scaleX = text.scaleX == 0? 1: text.scaleX
+      const y = text.y + ((text.height * scaleY) + 8)
+      const x = text.x + ((text.width * scaleX) / 2) 
+      setAnnotationToolPosition({x: x, y: y})
     }
 
     if (image) {
@@ -378,6 +393,34 @@ export default function PDFViewer({ url }: {url: string}) {
       setCurrentPage(currentPage + 1);
     }
   };
+  
+  const handleTransform = (e: Konva.KonvaEventObject<Event>) => {
+    setShowAnnotationTool(false)
+  }
+  
+  const handleTransformEnd = (e: KonvaEventObject<MouseEvent>) => {
+    const target = e.target;
+    const id = target.id();
+    const currAnnotations = getCurrentPageAnnotations();
+    const text = currAnnotations.textAnnotations.find(item => item.id == id)
+    const image = currAnnotations.imageAnnotations.find(item => item.id == id)
+
+    if (text) {
+      const scaleX = target.attrs.scaleX
+      const scaleY = target.attrs.scaleY
+      const skewX = target.attrs.skewX
+      const skewY = target.attrs.skewY
+      updateCurrentPageAnnotations({
+        ...currAnnotations,
+        textAnnotations: currAnnotations.textAnnotations.map(item => item.id == id? {...item, scaleY: scaleY, scaleX: scaleX, skewX: skewX, skewY: skewY }: item)
+      })
+
+    }
+
+    if (image) {
+      
+    }
+  }
   
   // Drawing handlers
   const handleMouseDown = (e: KonvaEventObject<MouseEvent>) => {
@@ -409,6 +452,8 @@ export default function PDFViewer({ url }: {url: string}) {
             )
           });
         }
+        
+        return
       }
       if (drawingMode === 'draw') {
         setIsDrawing(true);
@@ -422,13 +467,35 @@ export default function PDFViewer({ url }: {url: string}) {
         }
       } else if (drawingMode === 'text') {
         const stage = e.target.getStage()!;
+        const layer = stage.getLayers()[0]
+        
         const pointerPos = stage.getPointerPosition();
+
+        const tempText = new Konva.Text({
+          text: '',
+          fontSize: 18,
+          visible: false,
+          x: pointerPos?.x,
+          y: pointerPos?.y
+        })
+      
+        layer.add(tempText)
+        layer.batchDraw()
+        
+        const textRect = tempText.getClientRect();
+        
         if (pointerPos) {
           // Create a new text annotation
           const newTextAnnotation: TextAnnotation = {
             id: Date.now().toString(),
             x: pointerPos.x,
             y: pointerPos.y,
+            height: textRect.height,
+            width: textRect.width,
+            scaleX: 0,
+            scaleY: 0,
+            skewX: 0,
+            skewY: 0,
             text: '',
             draggable: true,
             isEditing: true
@@ -439,6 +506,7 @@ export default function PDFViewer({ url }: {url: string}) {
             textAnnotations: [...currAnnotations.textAnnotations, newTextAnnotation]
           });
           setSelectedAnnotationId(newTextAnnotation.id);
+          tempText.destroy()
         }
       } 
     };
@@ -509,7 +577,6 @@ export default function PDFViewer({ url }: {url: string}) {
 
   const handleMouseUp = () => {
     setIsDrawing(false);
-    console.log(selectedAnnotationId)
     if(selectedAnnotationId) setShowAnnotationTool(true)
   };
 
@@ -527,14 +594,14 @@ export default function PDFViewer({ url }: {url: string}) {
     });
   };
 
-  const handleTextEditingComplete = (id: string) => {
+  const handleTextEditingComplete = (id: string, size: any) => {
     
     const currAnnotations = getCurrentPageAnnotations();
     updateCurrentPageAnnotations({
       ...currAnnotations,
       textAnnotations: currAnnotations.textAnnotations.map(annotation => 
         annotation.id === id 
-          ? { ...annotation, isEditing: false } 
+          ? { ...annotation, height: size.height, width: size.width, isEditing: false } 
           : annotation
       )
     });
@@ -543,16 +610,23 @@ export default function PDFViewer({ url }: {url: string}) {
 
   const handleTextClick = (id: string) => {
     setSelectedAnnotationId(id);
-    const currAnnotations = getCurrentPageAnnotations();
-    updateCurrentPageAnnotations({
-      ...currAnnotations,
-      textAnnotations: currAnnotations.textAnnotations.map(annotation => 
-        annotation.id === id 
-          ? { ...annotation, isEditing: true } 
-          : { ...annotation, isEditing: false }
-      )
-    });
   };
+
+  const handleTextDblClck = (id: string) => {
+    setShowAnnotationTool(false)
+    setSelectedAnnotationId(id)
+    const currAnnotations = getCurrentPageAnnotations()
+    updateCurrentPageAnnotations({
+      ...currAnnotations, 
+      textAnnotations: currAnnotations.textAnnotations.map(annotation => 
+        annotation.id === id
+          ? { ...annotation, isEditing: true}
+          :  annotation
+      )
+    })
+
+
+  }
 
   // Image annotation handlers
   const handleImageClick = (id: string) => {
@@ -604,6 +678,10 @@ export default function PDFViewer({ url }: {url: string}) {
             id: Date.now().toString(),
             x: stageWidth / 2 - width / 2,
             y: stageHeight / 2 - height / 2,
+            scaleX: 0,
+            scaleY: 0, 
+            skewX: 0,
+            skewY: 0,
             width,
             height,
             src: result as string
@@ -857,26 +935,30 @@ export default function PDFViewer({ url }: {url: string}) {
                   onTextChange={handleTextChange}
                   onDragMove={handleMouseDrag}
                   onTextEditingComplete={handleTextEditingComplete}
+                  onDblClick={handleTextDblClck}
                   onTextClick={handleTextClick}
                   onImageClick={handleImageClick}
+                  onTransformEnd={handleTransformEnd}
+                  onTransform={handleTransform}
                 />
               )}
             </div>
           </div>
           {
         selectedAnnotationId && showAnnotationTool?
-          <div className="absolute bd-transparent rounded-full outline-ck outline-1 " style={{top: annotationToolPosition.y + 50, left: annotationToolPosition.x + 30}}>
-            <Button className="bg-transparent" onClick={deleteSelectedAnnotation}>
+          <div className="absolute overflow-hidden bg-red-500 text-white opacity-100 rounded-full border border-white w-10 animate-fade-in" style={{top: annotationToolPosition.y, left: annotationToolPosition.x}}>
+            <Button className="hover:bg-transparent cursor-pointer bg-transparent border-none outline-none h-full w-full rounded-full" onClick={deleteSelectedAnnotation}>
             <svg
               role="img"
               xmlns="http://www.w3.org/2000/svg"
               viewBox="0 0 24 24"
               width="24px"
               height="24px"
+              className="text-white"
             >
               <path
                 fill="none"
-                stroke="#000000"
+                stroke="#ffff"
                 strokeLinecap="round"
                 strokeLinejoin="round"
                 strokeWidth="2"
