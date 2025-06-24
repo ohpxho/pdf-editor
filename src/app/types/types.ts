@@ -10,7 +10,8 @@ interface TextAnnotation {
     skewY: number;
     text: string;
     draggable: boolean,
-    visible: boolean
+    visible: boolean,
+    isEditing: boolean
 }
 
 interface ImageAnnotation {

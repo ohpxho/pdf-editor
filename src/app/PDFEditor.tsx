@@ -71,19 +71,19 @@ export default function PDFEditor() {
         const textAnnotations = pageAnnotations.text
         const imageAnnotations = pageAnnotations.image
         const lineAnnotations = pageAnnotations.draw
-        
         const selectedText = textAnnotations.find((text) => text.id == id)
         const selectedImage = imageAnnotations.find((image) => image.id == id)
         const selectedLine = lineAnnotations.find((line) => line.id == id)
-        
+
         if(selectedText) {
+            
             const newTextVal = textAnnotations.map((text) => {
                 return text.id == id? {...value}: text
             })
 
             setAnnotation((prev) => {
                 return prev.map((page, idx) => {
-                    return idx === pageNo? { ...page, text: [...newTextVal as TextAnnotation[]]} : page
+                    return idx + 1 === pageNo? { ...page, text: [...newTextVal as TextAnnotation[]]} : page
                 })
             })
         }
@@ -95,7 +95,7 @@ export default function PDFEditor() {
 
             setAnnotation((prev) => {
                 return prev.map((page, idx) => {
-                    return idx === pageNo? { ...page, image: [...newImageVal as ImageAnnotation[]]} : page
+                    return idx + 1 === pageNo? { ...page, image: [...newImageVal as ImageAnnotation[]]} : page
                 })
             })
         }
@@ -106,7 +106,7 @@ export default function PDFEditor() {
             })
             setAnnotation((prev) => {
                 return prev.map((page, idx) => {
-                    return idx === pageNo? { ...page, draw: [...newLineVal as LineAnnotation[]]} : page
+                    return idx + 1 === pageNo? { ...page, draw: [...newLineVal as LineAnnotation[]]} : page
                 })
             })
         }

@@ -1,6 +1,6 @@
 'use client'
 
-import { useContext, useEffect, useRef } from 'react'
+import { useContext, useEffect, useRef, useLayoutEffect } from 'react'
 import Konva from 'konva'
 import { Html } from 'react-konva-utils'
 import { PDFContext } from '../PDFEditor'
@@ -8,14 +8,15 @@ import { TextAnnotation } from '../types/types'
 
 interface TextEditorProps {
   textNode: Konva.Text,
+  onClose: () => void
+  onTextChange: (text: string) => void
 }
 
-export default function TextEditor({ textNode}: TextEditorProps) {
+export default function TextEditor({ textNode, onClose, onTextChange }: TextEditorProps) {
     const pdf = useContext(PDFContext)
     const textareaRef = useRef<HTMLTextAreaElement | null>(null)
 
-    useEffect(() => {
-
+    useLayoutEffect(() => {
         if (!textareaRef.current || !textNode) return;
         const textarea = textareaRef.current;
         const stage = textNode?.getStage();
@@ -58,34 +59,46 @@ export default function TextEditor({ textNode}: TextEditorProps) {
         textarea.style.height = 'auto';
         textarea.style.height = `${textarea.scrollHeight + 3}px`;
     
-        textarea.focus();
-        
+        setTimeout(() => {
+          textareaRef.current?.focus();
+        }, 0);
+
+
+        const handleKeyDown = (e: KeyboardEvent) => {
+          if (e.key === "Enter" && !e.shiftKey) {
+            e.preventDefault();
+            onTextChange(textareaRef.current?.value as string);
+            onClose();
+          }
+          if (e.key === "Escape") {
+            onClose();
+          }
+        };
+
         const handleInput = () => {
-          const scale = textNode.getAbsoluteScale().x;
-          textarea.style.width = `${textNode.width() * scale}px`;
-          textarea.style.height = 'auto';
-          textarea.style.height = `${textarea.scrollHeight + textNode.fontSize()}px`;
+        const scale = textNode.getAbsoluteScale().x;
+        textarea.style.width = `${textNode.width() * scale}px`;
+        textarea.style.height = 'auto';
+        textarea.style.height = `${textarea.scrollHeight + textNode.fontSize()}px`;
         };
     
         textarea.addEventListener('input', handleInput);
-        setTimeout(() => {
-        });
-    
+        textarea.addEventListener('keydown', handleKeyDown);
+
         return () => {
           textarea.removeEventListener('input', handleInput);
+          textarea.removeEventListener('keydown', handleKeyDown);
         };
-      }, [textNode]);
+      }, [textNode, onClose, onTextChange]);
 
     return (
-        <Html>
-            <textarea 
-              ref={ textareaRef }
-              style={{ 
-                  minHeight: '1em',
-                  position: 'absolute'
-              }}
-            />
-        </Html>
+      <textarea 
+        ref={textareaRef}
+        style={{ 
+            minHeight: '1em',
+            position: 'absolute'
+        }}
+      />
     )
 
 

@@ -4,7 +4,8 @@ const nextConfig: NextConfig = {
    experimental: {
     turbo: {
       resolveAlias: {
-        canvas: './empty-module.ts'
+        canvas: './empty-module.ts',
+        encoding: './empty-module.ts'
       }
     }
    }

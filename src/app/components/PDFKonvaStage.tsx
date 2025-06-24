@@ -31,100 +31,133 @@ export default function PDFKonvaStage({size, pageNo}: PDFKonvaStageProps) {
     const textAnnotations: TextAnnotation[] | undefined = annotations?.text
     const imageAnnotations: ImageAnnotation[] | undefined = annotations?.image
     const lineAnnotations: LineAnnotation[] | undefined = annotations?.draw
-   
+    
+    const selectedAnnotationId = pdf?.selectedAnnotationId as number
+
+    const text = textAnnotations?.find((text) => text.id == selectedAnnotationId )
+    const image = imageAnnotations?.find((image) => image.id == selectedAnnotationId)
+    const line = lineAnnotations?.find((line) => line.id == selectedAnnotationId)
+
+    currAnnotation.current = text || image || line
+
     useEffect(() => {
-        console.log(pdf)
-        const selectedAnnotationId = pdf?.selectedAnnotationId
-        if (selectedAnnotationId  && trRef.current) {
-            
+        if (selectedAnnotationId && trRef.current) {
             const selectedTextNode = textRefs.current[selectedAnnotationId]
-            
             if(selectedTextNode) {
                 trRef.current.nodes([selectedTextNode])
+            } else {
+                trRef.current.nodes([])
             }
-            
         } else if(trRef.current) {
             trRef.current.nodes([]);
             trRef.current.getLayer()?.batchDraw();
         }
-
-        
-    }, [pdf])
-
-    //set the currAnnotation ref value when there is a selected annotation
+    }, [selectedAnnotationId, isEditing, annotations])
+    
     useEffect(() => {
-        if(!pdf) return
-        const selectedAnnotationId = pdf.selectedAnnotationId
+        if(selectedAnnotationId && text && text.isEditing) {
+            setIsEditing(true)
+        } else {
+            setIsEditing(false)
+        }
 
-        if(!selectedAnnotationId) return;
+    }, [selectedAnnotationId, text])
+    
+    const closeTextEditing = useCallback((): void => {
+        if(!annotations) return
+        const newTextAnnotation: TextAnnotation | undefined = annotations.text.find((text) => text.id == selectedAnnotationId);
+        if(!newTextAnnotation) return
+        newTextAnnotation.isEditing = false
+        
 
-        const text = textAnnotations?.find((text) => text.id == selectedAnnotationId )
-        const image = imageAnnotations?.find((image) => image.id == selectedAnnotationId)
-        const line = lineAnnotations?.find((line) => line.id == selectedAnnotationId)
-
-        currAnnotation.current = text || image || line
-        console.log(pageNo)
-        console.log(annotations)
-        console.log(text)
-        console.log(image)
-        console.log(line)
-        console.log(currAnnotation)
-    }, [pdf, currAnnotation, textAnnotations, imageAnnotations, lineAnnotations])
+        pdf?.updatePageAnnotations(pageNo, selectedAnnotationId, newTextAnnotation)
+        setIsEditing(false)
+    }, [annotations, pageNo, pdf, selectedAnnotationId])
 
     const onMouseDown = useCallback((e: KonvaEventObject<MouseEvent>): void => {
         if(!pdf) return
         const mode = pdf.mode;
 
-        const clickedTarget = stageRef?.current;
-        const clickedOnStage = clickedTarget === clickedTarget?.getStage();
-        const clickedOnEmpty = clickedOnStage || clickedTarget?.getClassName() === 'Layer';
+        // const clickedTarget = stageRef?.current;
+        // const clickedOnStage = clickedTarget === clickedTarget?.getStage();
+        // const clickedOnEmpty = clickedOnStage || clickedTarget.getClassName() === 'Layer';
+        const clickedOnStage = e.target === e.target.getStage();
+        const clickedOnEmpty = clickedOnStage || e.target.getClassName() === 'Layer';
 
-        if(clickedOnEmpty) {
+        if(clickedOnEmpty && selectedAnnotationId) {
             pdf.updateSelectedAnnotation(null)
+            if(text && text.isEditing) closeTextEditing()
+            return
         }
 
         const stage =  e.target.getStage()
-        const layer = stage?.getLayer()
         const pos = stage?.getPointerPosition()
 
-        if(mode == "text") {
+        if(clickedOnEmpty && mode == "text") {
             const newTextAnnotation: TextAnnotation = {
                 id: generateNumericId(),
-                text: "test",
+                text: "",
                 x: pos?.x || 0,
                 y: pos?.y || 0,
                 fontSize: 16,
-                scaleX: 0,
-                scaleY: 0,
+                scaleX: 1,
+                scaleY: 1,
                 skewX: 0,
                 skewY: 0,
                 width: 100,
                 draggable: true,
-                visible: true
+                visible: true,
+                isEditing: true
             }
-            
             pdf.addPageAnnotations(pageNo, newTextAnnotation)
             pdf.updateSelectedAnnotation(newTextAnnotation.id)
-            // setIsEditing(true)
-
         }
-    }, [pdf, pageNo])
+    }, [pdf, selectedAnnotationId, pageNo, text, closeTextEditing])
     
-       const handleTextDblClick = (id: number): void => {
+    const onTextChange = useCallback((text: string): void => {
+        if(!annotations) return
+        const newTextAnnotation: TextAnnotation | undefined = annotations.text.find((text) => text.id == selectedAnnotationId);
+        if(!newTextAnnotation) return
+        newTextAnnotation.text = text
+        
+
+        pdf?.updatePageAnnotations(pageNo, selectedAnnotationId, newTextAnnotation)
+        setIsEditing(false)
+    }, [annotations, pageNo, pdf, selectedAnnotationId])
+
+    const handleTextDblClick = (id: number): void => {
         pdf?.updateSelectedAnnotation(id)
         setIsEditing(true)
     }
     
-    const closeTextEditing = useCallback((): void => {
-        pdf?.updateSelectedAnnotation(null)
-        setIsEditing(false)
-    }, [pdf])
+    const onTextClick = (id: number) => {
+        if(!pdf) return
+        pdf.updateSelectedAnnotation(id);
+    };
     
+    const onTextTransform = (): void => {
+        if(!textRefs.current || !annotations) return
+
+        const node = textRefs.current[selectedAnnotationId]
+        const scaleX = node.scaleX()
+        const newWidth = node.width() * scaleX
+
+        const newTextAnnotation: TextAnnotation | undefined = annotations.text.find((text) => text.id == selectedAnnotationId);
+        if(!newTextAnnotation) return
+        newTextAnnotation.width = newWidth
+
+        pdf?.updatePageAnnotations(pageNo, selectedAnnotationId, newTextAnnotation)
+        
+        node.setAttrs({
+            width: newWidth,
+            scaleX: 1
+        })
+    }
 
     return (
         <Stage
             ref={stageRef}
-            className="absolute top-0 left-0 z-10 bg-gray-400"
+            className="absolute top-0 left-0 z-10"
             width={size.x}
             height={size.y}
             onMouseDown={onMouseDown}
@@ -134,7 +167,6 @@ export default function PDFKonvaStage({size, pageNo}: PDFKonvaStageProps) {
             >
                 {
                     textAnnotations?.map((text) => {
-                        console.log(text.width, " width")
                     return (
                         <Text
                             key={ text.id }
@@ -149,8 +181,16 @@ export default function PDFKonvaStage({size, pageNo}: PDFKonvaStageProps) {
                             skewX={ text.skewX }
                             skewY={ text.skewY }
                             draggable= { text.draggable }
-                            visible = { text.visible }
+                            visible = {
+                            isEditing && text.id == currAnnotation.current?.id?
+                            false : true
+                            }
                             onDblClick={() => handleTextDblClick(text.id)}
+                            onClick={(e) => {
+                                e.cancelBubble = true
+                                if(!isEditing) onTextClick(text.id)
+                            }}
+                            onTransform={onTextTransform}
                             ref={(node) => {
                                 if(node) {
                                     textRefs.current[text.id] = node
@@ -160,12 +200,16 @@ export default function PDFKonvaStage({size, pageNo}: PDFKonvaStageProps) {
                         )
                     })
                 }
-
-                {isEditing && currAnnotation.current &&
-                    <TextEditor
-                        textNode={ textRefs.current[currAnnotation.current.id]}
-                    />
+                {isEditing && currAnnotation.current && textRefs.current[currAnnotation.current.id] &&
+                    <Html>
+                        <TextEditor
+                            textNode={ textRefs.current[currAnnotation.current.id]}
+                            onClose={closeTextEditing}
+                            onTextChange={onTextChange}
+                        />
+                    </Html>
                 }
+                
                 {!isEditing && currAnnotation.current &&
                     <Transformer
                         ref={trRef}
