@@ -120,3 +120,39 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Custom Scrollbar Styles */
+/* Start of Selection */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-thumb {
+  border-radius: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent !important;
+}
+
+::-webkit-scrollbar-corner {
+  display: none;
+}
+
+::-webkit-scrollbar-button {
+  width: 0;
+  height: 0;
+  display: none;
+}
+
+/* Hide scrollbar arrows for Edge/IE */
+body {
+  -ms-overflow-style: none;
+}
+
+/* For Firefox: only show thumb */
+* {
+  scrollbar-width: thin;
+}
+/* End of Selection */

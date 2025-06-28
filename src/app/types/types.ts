@@ -21,20 +21,19 @@ interface ImageAnnotation {
     scaleX: number;
     scaleY: number;
     skewX: number;
-    skewY: number
+    skewY: number;
+    width: number;
+    height: number;
+    src: string;
 }
 
-interface LineAnnotation  {
-    id: number;
-    x: number;
-    y: number
-}
+type LineAnnotation = { points: number[] }
 
 type Mode = "text" | "draw" | "image" | null
 
 interface PageAnnotations {
     text: TextAnnotation[];
-    draw: LineAnnotation[];
+    line: LineAnnotation[];
     image: ImageAnnotation[]
 }
 

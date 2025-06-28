@@ -1,9 +1,11 @@
 import { useState, createContext } from 'react'
 import RenderPDF from './components/RenderPDF';
 import Toolbar from './components/Toolbar'
-import Menu from './components/Menu'
+import Preview from './components/Preview'
+import ToolOptions from './components/ToolOptions';
 import { Mode, PageAnnotations, TextAnnotation, ImageAnnotation, LineAnnotation} from './types/types'
 import { Image } from 'konva/lib/shapes/Image';
+import { Line } from 'konva/lib/shapes/Line';
 
 type AnnotationTypes = TextAnnotation | ImageAnnotation | LineAnnotation 
 
@@ -12,10 +14,13 @@ interface ContextTypes {
     mode: Mode;
     annotations: PageAnnotations[];
     selectedAnnotationId: number | null;
+    fileInputRef: HTMLInputElement | null;
     updateSelectedAnnotation: (id: number | null) => void;
     updatePageAnnotations: (pageNo: number, id: number, value: AnnotationTypes) => void;
     addPageAnnotations: (pageNo: number, value: AnnotationTypes) => void;
-    initNewPageAnnotation: () => void
+    initNewPageAnnotation: () => void;
+    updateFileInputRef: (ref: HTMLInputElement)=> void;
+    clearFileInput: () => void
 }
 
 export const PDFContext = createContext<ContextTypes | undefined>(undefined)
@@ -25,6 +30,7 @@ export default function PDFEditor() {
     const [mode, setMode] = useState<Mode>(null)
     const [annotations, setAnnotation] = useState<PageAnnotations[]>([])
     const [selectedAnnotationId, setSelectedAnnotationId] = useState<number | null>(null)
+    const [fileInputRef, setFileInputRef] = useState<HTMLInputElement | null>(null)
     
     function updateSelectedAnnotation(id: number | null) {
         setSelectedAnnotationId(id) 
@@ -35,7 +41,7 @@ export default function PDFEditor() {
     }
    
     function initNewPageAnnotation(): void {
-        setAnnotation(prev => [...prev, { text: [], image: [], draw: []}])
+        setAnnotation(prev => [...prev, { text: [], image: [], line: []}])
     }
 
     function addPageAnnotations(pageNo: number, value: AnnotationTypes): void {
@@ -60,20 +66,29 @@ export default function PDFEditor() {
         if(mode === 'draw') {
             setAnnotation((prev) => {
                 return prev.map((page, idx) => {
-                    return idx === pageNo? { ...page, draw: [...page.draw, value as LineAnnotation]} : page
+                    return idx === pageNo? { ...page, line: [...page.line, value as LineAnnotation]} : page
                 })
             })
         }
+    }
+    
+    function updateFileInputRef(ref: HTMLInputElement): void {
+        if(!ref) return
+        setFileInputRef(ref)
+    }
+    
+    function clearFileInput(): void {
+        setFileInputRef(null)
     }
 
     function updatePageAnnotations(pageNo: number, id: number, value: AnnotationTypes): void {
         const pageAnnotations = annotations[pageNo]
         const textAnnotations = pageAnnotations.text
         const imageAnnotations = pageAnnotations.image
-        const lineAnnotations = pageAnnotations.draw
+        const lineAnnotations = pageAnnotations.line
+
         const selectedText = textAnnotations.find((text) => text.id == id)
         const selectedImage = imageAnnotations.find((image) => image.id == id)
-        const selectedLine = lineAnnotations.find((line) => line.id == id)
 
         if(selectedText) {
             
@@ -83,33 +98,35 @@ export default function PDFEditor() {
 
             setAnnotation((prev) => {
                 return prev.map((page, idx) => {
-                    return idx + 1 === pageNo? { ...page, text: [...newTextVal as TextAnnotation[]]} : page
+                    return idx === pageNo? { ...page, text: [...newTextVal as TextAnnotation[]]} : page
                 })
             })
-        }
-
-        if(selectedImage) {
+        }else if(selectedImage) {
             const newImageVal = imageAnnotations.map((image) => {
                 return image.id == id? {...value}: image
             })
-
+            
             setAnnotation((prev) => {
                 return prev.map((page, idx) => {
-                    return idx + 1 === pageNo? { ...page, image: [...newImageVal as ImageAnnotation[]]} : page
+                    return idx === pageNo? { ...page, image: [...newImageVal as ImageAnnotation[]]} : page
                 })
             })
+        } else {
+            if(id == -1 && mode == "draw") {
+                const newLineVal = [...lineAnnotations.slice(0, -1), value as LineAnnotation]
+                setAnnotation((prev) => {
+                    return prev.map((page, idx) => {
+                        return idx === pageNo? { ...page, line: [...newLineVal]} : page
+                    })
+                })
+            }
         }
+    }
+    
+    function getCurrPageFromViewPort(): number {
+        
 
-        if(selectedLine) {
-            const newLineVal = lineAnnotations.map((line) => {
-                return line.id == id? {...value}: line
-            })
-            setAnnotation((prev) => {
-                return prev.map((page, idx) => {
-                    return idx + 1 === pageNo? { ...page, draw: [...newLineVal as LineAnnotation[]]} : page
-                })
-            })
-        }
+        return 0
     }
 
     return (
@@ -120,24 +137,30 @@ export default function PDFEditor() {
                     mode,
                     annotations,
                     selectedAnnotationId,
+                    fileInputRef,
                     updateSelectedAnnotation,
                     updatePageAnnotations,
                     addPageAnnotations,
-                    initNewPageAnnotation
+                    initNewPageAnnotation,
+                    updateFileInputRef,
+                    clearFileInput
                 }
             }>
-                <div className="relative h-full w-full">
-                    <Menu />
-                    <div className="relative flex w-full h-full">
-                        <div className="z-30 absolute w-fit h-full shadow-lg">
-                            <Toolbar onChangeMode={ setEditingMode } />
+                <div className="relative h-screen w-full overflow-hidden">
+                    <Toolbar onChangeMode={ setEditingMode } />
+                    <div className="relative flex w-full h-full overflow-hidden">
+                        <div className="overflow-auto">
+                            <Preview />
                         </div>
-                        <div className="relative w-full">
+                        <div className="relative w-full overflow-auto">
                             <RenderPDF
                                 url={url}
                                 annotations={annotations}
                                 mode={mode}
                             />
+                        </div>
+                        <div className="overflow-auto">
+                            <ToolOptions />
                         </div>
                     </div>
                 </div>

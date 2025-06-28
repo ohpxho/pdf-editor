@@ -20,7 +20,7 @@ const options = {
   standardFontDataUrl: '/standard_fonts/',
 };
 
-const maxWidth = 800;
+const maxWidth = 400;
 const resizeObserverOptions = {};
 
 interface RenderPDFTypes {
@@ -68,9 +68,9 @@ export default function RenderPDF({ url, annotations, mode }: RenderPDFTypes) {
   
 
   return (
-    <div className="relative flex flex-col h-full">
+    <div className="relative flex flex-col h-full ">
       <div >
-        <div className="relative flex-1 overflow-auto bg-gray-100 p-4">
+        <div className="relative flex-1 overflow-auto bg-gray-200 p-4">
           <div ref={containerRef} className="relative mx-auto max-w-4xl">
             <Document className="relative flex flex-col gap-4 bg-transparent w-full" file={url} onLoadSuccess={onDocumentLoadSuccess} options={options}>
               {Array.from(new Array(numPages), (_el, index) => (
@@ -80,7 +80,7 @@ export default function RenderPDF({ url, annotations, mode }: RenderPDFTypes) {
                     pageNo={index + 1}
                   />
                   <Page
-                    className="relative w-full"
+                    className="relative w-full border border-gray-300"
                     pageNumber={index + 1}
                     width={pageWidth}
                     onLoadSuccess={onPageLoadSuccess}
