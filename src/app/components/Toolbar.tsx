@@ -22,10 +22,10 @@ export default function Toolbar({ onChangeMode }: ToolbarTypes) {
     return (
        <div className="sticky top-0 left-0 right-0 z-50 h-fit p-2 border-b flex items-center px-4 bg-white">
           <div className="flex justify-start gap-4">
-            <button className="text-black rounded-lg hover:bg-gray-100 transition-colors duration-200 disabled:text-gray-400" disabled={true}>
+            <button className="text-black rounded-lg transition-colors duration-200 disabled:text-gray-400 disabled:cursor-not-allowed" disabled={true}>
               <Undo2 />
             </button>
-            <button className="text-black rounded-lg hover:bg-gray-100 transition-colors duration-200 disabled:text-gray-400" disabled={true}>
+            <button className="text-black rounded-lg transition-colors duration-200 disabled:text-gray-400 disabled:cursor-not-allowed" disabled={true}>
               <Redo2 />
             </button>
           </div>

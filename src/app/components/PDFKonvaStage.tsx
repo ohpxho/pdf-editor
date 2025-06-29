@@ -12,7 +12,6 @@ import TextEditor from './TextEditor'
 
 type AnnotationTypes = TextAnnotation | ImageAnnotation | LineAnnotation
 
-
 interface PDFKonvaStageProps {
     size: {x: number, y: number};
     pageNo: number
@@ -41,7 +40,6 @@ export default function PDFKonvaStage({size, pageNo}: PDFKonvaStageProps) {
     const onImageUpload = useCallback((input: HTMLInputElement): void => {
         const files = input?.files;
         if(!files || files.length === 0) return;
-        console.log(input, " input")
         const file = files[0]
         const reader = new FileReader();
 
@@ -85,12 +83,14 @@ export default function PDFKonvaStage({size, pageNo}: PDFKonvaStageProps) {
                         src: result as string
                     }
                     
-                    pdf?.addPageAnnotations(pageNo, newImageAnnotation)
+                    pageNo = pdf? pdf.currPageInView: pageNo;
+                    pdf?.addPageAnnotations(pageNo + 1, newImageAnnotation)
                     pdf?.updateSelectedAnnotation(newImageAnnotation.id)
                 }
             }
         }
         reader.readAsDataURL(file);
+        input.value = ''
     }, [pageNo, pdf])
     
     useEffect(() => {
@@ -111,6 +111,7 @@ export default function PDFKonvaStage({size, pageNo}: PDFKonvaStageProps) {
     }, [imageAnnotations, imageObjects])
 
     useEffect(() => {
+        console.log(imageAnnotations)
         if (selectedAnnotationId && trRef.current) {
             const selectedTextNode = textRefs.current[selectedAnnotationId]
             const selectedImgNode = imgRefs.current[selectedAnnotationId]
@@ -141,9 +142,6 @@ export default function PDFKonvaStage({size, pageNo}: PDFKonvaStageProps) {
         const file = pdf.fileInputRef;
         onImageUpload(file);
         
-        return () => {
-            pdf.clearFileInput()
-        }
     }, [pdf, onImageUpload])
 
     const closeTextEditing = useCallback((): void => {

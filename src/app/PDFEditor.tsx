@@ -15,6 +15,8 @@ interface ContextTypes {
     annotations: PageAnnotations[];
     selectedAnnotationId: number | null;
     fileInputRef: HTMLInputElement | null;
+    currPageInView: number;
+    updateCurrPageInView: (pageNo: number) => void;
     updateSelectedAnnotation: (id: number | null) => void;
     updatePageAnnotations: (pageNo: number, id: number, value: AnnotationTypes) => void;
     addPageAnnotations: (pageNo: number, value: AnnotationTypes) => void;
@@ -26,8 +28,9 @@ interface ContextTypes {
 export const PDFContext = createContext<ContextTypes | undefined>(undefined)
 
 export default function PDFEditor() {
-    const [url, setUrl] = useState<string>("./pdf/test2.pdf")
+    const [url, setUrl] = useState<string>("./pdf/test3.pdf")
     const [mode, setMode] = useState<Mode>(null)
+    const [currPageInView, setCurrPageInView] = useState<number>(0)
     const [annotations, setAnnotation] = useState<PageAnnotations[]>([])
     const [selectedAnnotationId, setSelectedAnnotationId] = useState<number | null>(null)
     const [fileInputRef, setFileInputRef] = useState<HTMLInputElement | null>(null)
@@ -42,6 +45,10 @@ export default function PDFEditor() {
    
     function initNewPageAnnotation(): void {
         setAnnotation(prev => [...prev, { text: [], image: [], line: []}])
+    }
+
+    function updateCurrPageInView(pageNo: number): void {
+        setCurrPageInView(pageNo)
     }
 
     function addPageAnnotations(pageNo: number, value: AnnotationTypes): void {
@@ -122,12 +129,6 @@ export default function PDFEditor() {
             }
         }
     }
-    
-    function getCurrPageFromViewPort(): number {
-        
-
-        return 0
-    }
 
     return (
         <div>
@@ -138,6 +139,8 @@ export default function PDFEditor() {
                     annotations,
                     selectedAnnotationId,
                     fileInputRef,
+                    currPageInView,
+                    updateCurrPageInView,
                     updateSelectedAnnotation,
                     updatePageAnnotations,
                     addPageAnnotations,
@@ -149,7 +152,7 @@ export default function PDFEditor() {
                 <div className="relative h-screen w-full overflow-hidden">
                     <Toolbar onChangeMode={ setEditingMode } />
                     <div className="relative flex w-full h-full overflow-hidden">
-                        <div className="overflow-auto">
+                        <div className="relative">
                             <Preview />
                         </div>
                         <div className="relative w-full overflow-auto">
@@ -159,7 +162,7 @@ export default function PDFEditor() {
                                 mode={mode}
                             />
                         </div>
-                        <div className="overflow-auto">
+                        <div className="relative">
                             <ToolOptions />
                         </div>
                     </div>

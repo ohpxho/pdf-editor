@@ -36,7 +36,7 @@ export default function RenderPDF({ url, annotations, mode }: RenderPDFTypes) {
   const [containerWidth, setContainerWidth] = useState<number>(0);
   const [pageHeights, setPageHeights] = useState<number[]>([]);
   const [inViewStates, setInViewStates] = useState<boolean[]>([]);
-  const prevInViewPage = useRef<number>(0)
+  const [prevInViewPage, setPrevInViewPage] = useState<number>(0)
   const containerRef = useRef<HTMLDivElement | null>(null);
   const pageRefs = useRef<(HTMLDivElement | null)[]>([]);
   const pageWidth = containerWidth? Math.max(containerWidth, maxWidth) : maxWidth
@@ -45,18 +45,26 @@ export default function RenderPDF({ url, annotations, mode }: RenderPDFTypes) {
     if (!numPages) return;
     
     setInViewStates(new Array(numPages).fill(false));
+    let prevInViewPage = 0 
 
     const observer = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
           const index = pageRefs.current.findIndex(ref => ref === entry.target);
           if (index !== -1) {
+            console.log(prevInViewPage)
+            console.log(index)
+            console.log(entry.isIntersecting)
+            console.log(inViewStates[prevInViewPage])
+            if(!inViewStates[prevInViewPage] && entry.isIntersecting) {
+              pdf?.updateCurrPageInView(index)
+            }            
             setInViewStates(prev => {
               const newStates = [...prev];
               newStates[index] = entry.isIntersecting;
               return newStates;
             });
-            prevInViewPage.current = index
+            setPrevInViewPage(index)
           }
         });
       },
@@ -72,16 +80,7 @@ export default function RenderPDF({ url, annotations, mode }: RenderPDFTypes) {
     
     return () => observer.disconnect();
   }, [numPages]);
-
-    useEffect(() => {
-      if(!pdf) return
-      
-      let index = inViewStates.findIndex(v => v == true)
-      index = index >= 0? index: prevInViewPage.current
-      
-      pdf.updateCurrPageInView(index)
-      
-    }, [pdf, inViewStates])
+  
   
   const onResize = useCallback<ResizeObserverCallback>((entries) => {
     const [entry] = entries;
