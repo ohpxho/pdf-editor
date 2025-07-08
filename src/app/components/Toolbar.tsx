@@ -4,7 +4,19 @@ import { useContext, useRef } from 'react'
 import { PDFContext } from '../PDFEditor'
 import { Input } from '@/components/ui/input'
 import { Mode } from '../types/types'
-import { Undo2, Redo2} from 'lucide-react'
+import { Undo2, Redo2, Signature, Brush, Trash2, RotateCcw} from 'lucide-react'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
+import { Button } from '@/components/ui/button'
 
 type ToolbarTypes = {
   onChangeMode: (mode: Mode) => void
@@ -17,6 +29,11 @@ export default function Toolbar({ onChangeMode }: ToolbarTypes) {
     const onChange = (): void => {
       if(!fileInputRef.current || !pdf) return
       pdf.updateFileInputRef(fileInputRef.current)
+    }
+    
+    const clearAnnotations = (): void => {
+      if(!pdf) return
+      pdf.clearAllAnnotations()
     }
     
     return (
@@ -48,11 +65,8 @@ export default function Toolbar({ onChangeMode }: ToolbarTypes) {
                 ? 'bg-blue-100 text-blue-600' 
                 : 'hover:bg-blue-50 hover:text-blue-500 text-gray-600'
             }`} onClick={() => onChangeMode("draw")}>
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" className="fill-current">
-                <path fill="none" d="M0 0h24v24H0z"/>
-                <path d="M15.243 4.515l-6.738 6.737-.707 2.121 2.121-.707 6.738-6.738-1.414-1.414zm.828-3.535l5.657 5.657-9.9 9.9-5.658-5.657 9.9-9.9zm-11.314 11.314l-4.242 4.242-1.414 4.242 4.242-1.414 4.242-4.242-2.828-2.828z"/>
-              </svg>
-              <span className="text-xs">Draw</span>
+              <Brush />
+              <span className="text-xs">Brush</span>
             </div>
 
             <div className={`flex flex-col items-center gap-0.5 p-1.5 rounded-lg cursor-pointer transition-colors duration-200 w-14 h-12 ${
@@ -77,6 +91,38 @@ export default function Toolbar({ onChangeMode }: ToolbarTypes) {
               accept="image/*"
               onChange={onChange}
             />
+
+            <div className={`flex flex-col items-center gap-0.5 p-1.5 rounded-lg cursor-pointer transition-colors duration-200 w-12 h-12 ${
+              pdf && pdf.mode == 'sign' 
+                ? 'bg-blue-100 text-blue-600' 
+                : 'hover:bg-blue-50 hover:text-blue-500 text-gray-600'
+            }`} onClick={() => onChangeMode("sign")}>
+              <Signature />
+              <span className="text-xs">Sign</span>
+            </div>
+            <div className="w-px h-8 bg-gray-200 mx-2 self-center" />
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <div 
+                  className={`flex flex-col items-center gap-0.5 p-1.5 rounded-lg cursor-pointer transition-colors duration-200 w-12 h-12 text-gray-600 hover:text-red-600`}
+                >
+                  <RotateCcw />
+                  <span className="text-xs">Reset</span>
+                </div>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This action cannot be undone. This will permanently delete all annotations you added in all pages.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction onClick={clearAnnotations}>Continue</AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
           </div>
           <div className="flex justify-end gap-4">
             <button className="flex items-center justify-center rounded-lg bg-white cursor-pointer transition-colors duration-200 border border-transparent disabled:cursor-not-allowed disabled:text-gray-400" disabled={true}>

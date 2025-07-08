@@ -27,20 +27,45 @@ interface ImageAnnotation {
     src: string;
 }
 
-type LineAnnotation = { points: number[] }
 
-type Mode = "text" | "draw" | "image" | null
+interface LineAnnotation { 
+    points: number[];
+    stroke: string;
+    strokeWidth: number; 
+    tension: number;
+    lineCap: string;
+    lineJoin: string 
+}
 
+interface LineAnnotationGroup {
+    id: number
+    x: number
+    y: number
+    scaleX: number
+    scaleY: number
+    rotation: number
+    lines: LineAnnotation[]
+}
+
+type Mode = "text" | "draw" | "image" | "sign" | null
+
+interface Metadata {
+    url: string,
+    filename: string,
+}
 interface PageAnnotations {
     text: TextAnnotation[];
-    line: LineAnnotation[];
-    image: ImageAnnotation[]
+    line: LineAnnotationGroup[];
+    image: ImageAnnotation[];
+    sign: ImageAnnotation[]
 }
 
 export type {
     TextAnnotation,
     ImageAnnotation,
     LineAnnotation,
+    LineAnnotationGroup,
     PageAnnotations,
-    Mode
+    Mode,
+    Metadata
 }

@@ -16,9 +16,16 @@ export default function Preview() {
     const [pageHeights, setPageHeights] = useState<number[]>([])
     const pageWidth = 120
     
-    function onDocumentLoadSuccess({ numPages: numPages }: { numPages: number }): void {
+    const onDocumentLoadSuccess = ({ numPages: numPages }: { numPages: number }): void => {
         setNumPages(numPages);
     }
+
+    const onClickPreview = (index: number) => {
+       document.getElementById(`page_${index + 1}`)?.scrollIntoView({
+         behavior: 'smooth',
+         block: 'nearest'
+       });
+     }
 
     function onPageLoadSuccess({ pageNumber, width, height }: { pageNumber: number, width: number, height: number }): void {
     const scale = pageWidth / width;
@@ -29,7 +36,7 @@ export default function Preview() {
       newHeights[pageNumber - 1] = scaledHeight;
       return newHeights;
     });
-
+    
     if(!pdf) return
         pdf.initNewPageAnnotation()
     }
@@ -49,15 +56,17 @@ export default function Preview() {
         </div>
         <div className="relative p-4 ">
           <div className="relative">
-            <Document className="relative flex flex-col gap-4 bg-transparent w-full" file={pdf?.url} onLoadSuccess={onDocumentLoadSuccess} options={options}>
+            <Document className="relative flex flex-col gap-4 bg-transparent w-full" file={pdf?.metadata.url} onLoadSuccess={onDocumentLoadSuccess} options={options}>
               {Array.from(new Array(numPages), (_el, index) => {
                 return (
                 <div  
-                  key={`page_${index + 1}`} 
-                  className={`relative p-2 w-fit ${pdf && pdf.currPageInView == index && 'bg-blue-100'} rounded-sm`}
+                  key={`preview_${index + 1}`} 
+                  id={`preview_${index + 1}`}
+                  className={`relative p-2 w-fit ${pdf && pdf.currPageInView == index && 'bg-blue-100'} rounded-sm cursor-pointer`}
+                  onClick={() => onClickPreview(index)}
                 >
                   <Page
-                    className={`relative w-fit border-2 ${pdf && pdf.currPageInView == index? 'border-blue-600': 'border-gray-300'}`}
+                    className={`relative w-fit border-2 ${pdf && pdf.currPageInView == index? 'border-blue-600': 'border-gray-300 hover:border-blue-600'} transition-colors`}
                     pageNumber={index + 1}
                     width={pageWidth}
                     onLoadSuccess={onPageLoadSuccess}

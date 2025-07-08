@@ -33,7 +33,7 @@ interface RenderPDFTypes {
 export default function RenderPDF({ url, annotations, mode }: RenderPDFTypes) {
   const pdf = useContext(PDFContext)
   const [numPages, setNumPages] = useState<number>();
-  const [containerWidth, setContainerWidth] = useState<number>(0);
+  const [containerWidth, setContainerWidth] = useState<number>(650);
   const [pageHeights, setPageHeights] = useState<number[]>([]);
   const [inViewStates, setInViewStates] = useState<boolean[]>([]);
   const prevInViewPage = useRef<number>(0)
@@ -79,19 +79,14 @@ export default function RenderPDF({ url, annotations, mode }: RenderPDFTypes) {
       let index = inViewStates.findIndex(v => v == true)
       index = index >= 0? index: prevInViewPage.current
       
+      document.getElementById(`preview_${index + 1}`)?.scrollIntoView({
+       behavior: 'smooth',
+       block: 'nearest'
+      });
+
       pdf.updateCurrPageInView(index)
       
     }, [pdf, inViewStates])
-  
-  const onResize = useCallback<ResizeObserverCallback>((entries) => {
-    const [entry] = entries;
-
-    if (entry) {
-      setContainerWidth(entry.contentRect.width);
-    }
-  }, []);
-
-  useResizeObserver(containerRef.current ?? null, resizeObserverOptions, onResize);
 
   function onDocumentLoadSuccess({ numPages: numPages }: { numPages: number }): void {
     setNumPages(numPages);
@@ -116,7 +111,7 @@ export default function RenderPDF({ url, annotations, mode }: RenderPDFTypes) {
     <div className="relative flex flex-col h-full ">
       <div >
         <div className="relative flex-1 overflow-auto bg-gray-200 p-4">
-          <div ref={containerRef} className="relative mx-auto max-w-4xl">
+          <div ref={containerRef} className="relative mx-auto max-w-fit">
             <Document className="relative flex flex-col gap-4 bg-transparent w-full" file={url} onLoadSuccess={onDocumentLoadSuccess} options={options}>
               {Array.from(new Array(numPages), (_el, index) => {
                 return (
@@ -125,6 +120,7 @@ export default function RenderPDF({ url, annotations, mode }: RenderPDFTypes) {
                     pageRefs.current[index] = el;
                   }} 
                   key={`page_${index + 1}`} 
+                  id={`page_${index + 1}`}
                   className="relative "
                 >
                  <PDFKonvaStage
