@@ -7,7 +7,7 @@ import { HexColorPicker } from "react-colorful";
 interface ColoPickerProps {
     className?: string | '';
     color: string;
-    setColor: React.Dispatch<React.SetStateAction<string>>
+    setColor: React.Dispatch<React.SetStateAction<string>> | ((color: string) => void)
 }
 
 export default function ColorPicker({className="", color, setColor}: ColoPickerProps) {

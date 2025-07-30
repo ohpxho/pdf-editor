@@ -4,15 +4,15 @@ import { cn } from "@/lib/utils"; // For className merging if you use it
 
 interface PenWeightSliderProps {
     strokeWidth: number;
-    setStrokeWidth: React.Dispatch<React.SetStateAction<number>>
+    setStrokeWidth: React.Dispatch<React.SetStateAction<number>> | ((width: number) => void)
 }
 
 export default function PenWeightSlider({ strokeWidth, setStrokeWidth }: PenWeightSliderProps) {
 
   return (
-    <div className="flex items-center gap-3 p-2 rounded">
+    <div className="flex items-center gap-3 rounded w-full">
       {/* Icon (replace with your own SVG if needed) */}
-      <svg width="24" height="24" viewBox="0 0 24 24" className="text-black">
+      <svg width="20" height="20" viewBox="0 0 24 24" className="text-black">
         <rect x="4" y="6" width="16" height="1" rx="1" fill="currentColor" />
         <rect x="4" y="10" width="16" height="2" rx="1" fill="currentColor" />
         <rect x="4" y="14" width="16" height="3" rx="1" fill="currentColor" />

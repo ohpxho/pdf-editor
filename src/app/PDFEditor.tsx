@@ -4,8 +4,8 @@ import RenderPDF from './components/RenderPDF';
 import Toolbar from './components/Toolbar'
 import Preview from './components/Preview'
 import FileMenu from './components/FileMenu'
-import ToolOptions from './components/tool-options/ToolOptions';
-import { Mode, PageAnnotations, TextAnnotation, ImageAnnotation, LineAnnotation, Metadata, LineAnnotationGroup} from './types/types'
+import ToolOptions from './components/options/ToolOptions';
+import { Mode, PageAnnotations, TextAnnotation, ImageAnnotation, LineAnnotation, Metadata, LineAnnotationGroup, ImageFormat, LineFormat} from './types/types'
 import { Image } from 'konva/lib/shapes/Image';
 import { Line } from 'konva/lib/shapes/Line';
 
@@ -20,6 +20,10 @@ interface ContextTypes {
     fileInputRef: HTMLInputElement | null;
     currPageInView: number;
     stageRef: Konva.Stage | null;
+    imageFormat: ImageFormat;
+    lineFormat: LineFormat;
+    updateLineFormat: (format: LineFormat) => void;
+    updateImageFormat: (format: ImageFormat) => void
     setStageRef: (ref: Konva.Stage) => void;
     addSignature: (signature: string) => void;
     removeSignature: (index: number) => void;
@@ -43,6 +47,14 @@ export default function PDFEditor() {
         url: '',
         filename: ''
     })
+    const [imageFormat, setImageFormat] = useState<ImageFormat>({
+        opacity: 1
+    })
+    const [lineFormat, setLineFormat] = useState<LineFormat>({
+        opacity: 1,
+        color: '#000',
+        width: 5
+    })
     const [mode, setMode] = useState<Mode>(null)
     const [currPageInView, setCurrPageInView] = useState<number>(0)
     const [annotations, setAnnotation] = useState<PageAnnotations[]>([])
@@ -54,6 +66,14 @@ export default function PDFEditor() {
         url: './pdf/test2.pdf',
         filename: 'test2.pdf'
     })}, [])
+    
+    function updateImageFormat(format: ImageFormat): void {
+        setImageFormat({...format})
+    }
+    
+    function updateLineFormat(format: LineFormat): void {
+        setLineFormat({...format})
+    }
     
     function setStageRef(ref: Konva.Stage):void {
         if(!ref) return
@@ -143,6 +163,64 @@ export default function PDFEditor() {
         }
     }
     
+    function removePageAnnotation(pageNo: number, id: number, type: string): void {
+        if(type == "text") {
+            setAnnotation((prev) => {
+                return prev.map((page, idx) => {
+                    if(idx == pageNo) {
+                        const index = page.text.findIndex((text) => text.id === id)
+                        const newtextAnnotation = page.text.splice(index, 0)
+                        return {...page, text: newtextAnnotation as TextAnnotation[]}
+                    } else {
+                      return page
+                    }
+                })
+            })
+        }
+
+        if(type == "image") {
+            setAnnotation((prev) => {
+                return prev.map((page, idx) => {
+                    if(idx == pageNo) {
+                        const index = page.image.findIndex((image) => image.id === id)
+                        const newImageAnnotation = page.image.splice(index, 0)
+                        return {...page, image: newImageAnnotation as ImageAnnotation[]}
+                    } else {
+                      return page
+                    }
+                })
+            })
+        }
+
+        if(type == "lines") {
+             setAnnotation((prev) => {
+                return prev.map((page, idx) => {
+                    if(idx == pageNo) {
+                        const index = page.line.findIndex((line) => line.id === id)
+                        const newLineAnnotationGroup = page.line.splice(index, 0)
+                        return {...page, line: newLineAnnotationGroup as LineAnnotationGroup[]}
+                    } else {
+                      return page
+                    }
+                })
+            })
+        }
+
+        if(type == "signature") {
+            setAnnotation((prev) => {
+                return prev.map((page, idx) => {
+                    if(idx == pageNo) {
+                        const index = page.sign.findIndex((sign) => sign.id === id)
+                        const newSignAnnotation = page.sign.splice(index, 0)
+                        return {...page, sign: newSignAnnotation as ImageAnnotation[]}
+                    } else {
+                      return page
+                    }
+                })
+            })
+        }
+    }
+    
     function updateFileInputRef(ref: HTMLInputElement): void {
         if(!ref) return
         setFileInputRef(ref)
@@ -219,6 +297,10 @@ export default function PDFEditor() {
                     fileInputRef,
                     currPageInView,
                     stageRef: stageRef.current,
+                    imageFormat,
+                    lineFormat,
+                    updateLineFormat,
+                    updateImageFormat,
                     setStageRef,
                     addSignature,
                     removeSignature,
