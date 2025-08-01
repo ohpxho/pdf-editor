@@ -18,6 +18,7 @@ export default function Trash({ id, box }: TrashProps) {
 		<div
 			style={{
 				position: "absolute",
+				zIndex: 99,
 				left: x,
 				top: y,
 				width: boxWidth,

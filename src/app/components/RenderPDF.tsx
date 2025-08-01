@@ -129,7 +129,7 @@ export default function RenderPDF({ url, annotations, mode }: RenderPDFTypes) {
 	}
 
 	return (
-		<div className="relative flex flex-col h-full ">
+		<div className="relative flex flex-col h-full">
 			<div>
 				<div className="relative flex-1 overflow-auto bg-gray-200 p-4">
 					<div ref={containerRef} className="relative mx-auto max-w-fit">

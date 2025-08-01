@@ -68,7 +68,6 @@ export default function PDFKonvaStage({ size, pageNo }: PDFKonvaStageProps) {
 	);
 
 	useEffect(() => {
-		console.log(lineAnnotations);
 		if (!pdf) return;
 		if (pdf.mode == "draw") return;
 
@@ -479,6 +478,10 @@ export default function PDFKonvaStage({ size, pageNo }: PDFKonvaStageProps) {
 
 	return (
 		<div>
+			{selectedAnnotationId && trRef.current && (
+				<Trash box={trRef.current} id={selectedAnnotationId} />
+			)}
+
 			<Stage
 				ref={(node) => {
 					if (node) {
@@ -726,9 +729,6 @@ export default function PDFKonvaStage({ size, pageNo }: PDFKonvaStageProps) {
 					)}
 				</Layer>
 			</Stage>
-			{selectedAnnotationId && trRef.current && (
-				<Trash box={trRef.current} id={selectedAnnotationId} />
-			)}
 		</div>
 	);
 }
